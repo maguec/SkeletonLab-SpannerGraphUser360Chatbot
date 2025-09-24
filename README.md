@@ -14,3 +14,6 @@ uv run load_data.py
 ```
 
 
+## Feel free to run some sample queries in Spanner Studio
+
+[Queries](./SampleQueries.md)
