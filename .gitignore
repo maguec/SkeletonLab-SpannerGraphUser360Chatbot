@@ -8,3 +8,9 @@ wheels/
 
 # Virtual environments
 .venv
+
+Agent/*/__pycache__
+Agent/toolbox
+Agent/.venv/*
+Agent/.env
+Agent/*/.env
