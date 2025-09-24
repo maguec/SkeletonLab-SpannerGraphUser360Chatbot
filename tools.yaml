@@ -1,0 +1,181 @@
+sources:
+  spanner-graph:
+    database: ${GOOGLE_SPANNER_DB}
+    instance: ${GOOGLE_SPANNER_INSTANCE}
+    kind: spanner
+    project: ${GOOGLE_CLOUD_PROJECT}
+
+tools:
+  lookup_account_by_email:
+    description: Find the account number for a given email address
+    kind: spanner-sql
+    parameters:
+    - description: Email address
+      name: email
+      type: string
+    source: spanner-graph
+    statement: SELECT id AS AccountId, email, sus as IS_SUSPECT from Email as e where e.email = @email;
+
+  lookup_account_by_phonenumber:
+    description: Find the account number for a given phone number
+    kind: spanner-sql
+    parameters:
+    - description: Phone Number
+      name: phone
+      type: string
+    source: spanner-graph
+    statement: >
+      GRAPH UserIdentity
+      MATCH (d:Device{phone: @phone})<-[:HAS_DEVICE]-(e:Email)
+      RETURN e.id as UserId, e.sus as IS_SUSPECT
+
+  lookup_creditcard_by_userid:
+    description: Giventhe user id which is a UUID show all associated credit cards
+    kind: spanner-sql
+    parameters:
+    - description: User Id
+      name: user_id
+      type: string
+    source: spanner-graph
+    statement: >
+      GRAPH UserIdentity
+      MATCH (e:Email{id: @user_id})-[:EMAIL_HAS_CC]->(cc:CC)
+      RETURN e.id as ID, cc.last4 AS CC_LAST4, cc.zip AS CC_ZIP, cc.sus AS IS_SUSPECT, cc.id as CC_ID LIMIT 10;
+
+  lookup_orders_by_userid:
+    description: Given the user id which is a UUID display all of their shipping addresses
+    kind: spanner-sql
+    parameters:
+    - description: User Id
+      name: user_id
+      type: string
+    source: spanner-graph
+    statement: >
+      GRAPH UserIdentity
+      MATCH (e:Email{id: @user_id})<-[:HAS_EMAIL]-(s:SalesOrder)-[:HAS_ADDRESS]->(a:ShippingAddress)
+      RETURN a.address AS ShippingAddress, s.id AS ORDER_ID, s.sus as ORDER_SUSPECT, a.sus AS ShippingAddress_SUSPECT
+
+  query-email-sus:
+    description: See if an email has been marked as suspicious
+    kind: spanner-sql
+    parameters:
+    - description: Email address
+      name: email
+      type: string
+    source: spanner-graph
+    statement: SELECT sus AS IS_SUSPECT from Email WHERE Email.email = @email;
+
+  query-email-cc:
+    description: See if an email has been tied to any suspicious credit cards
+    kind: spanner-sql
+    parameters:
+    - description: Email address
+      name: email
+      type: string
+    source: spanner-graph
+    statement: >
+      GRAPH UserIdentity
+       MATCH (cc:CC)<-[EMAIL_HAS_CC]-(
+          e:Email{email: @email})
+       RETURN  MAX(cc.sus) as IS_SUSPECT
+
+  query-email-orders:
+    description: See if an email has been tied to any suspicious orders
+    kind: spanner-sql
+    parameters:
+    - description: Email address
+      name: email
+      type: string
+    source: spanner-graph
+    statement: >
+      GRAPH UserIdentity
+       MATCH (
+        e:Email{email:@email})<-[HAS_EMAIL]-(o:SalesOrder)
+          -[hs:HAS_ADDRESS]->(sa:ShippingAddress)
+       RETURN COUNT(hs.ts) AS TransactionCount, MAX(o.sus) AS IS_SUSPECT
+
+  report-suspicious-transactions:
+    description: Report suspicious transaction counts by month
+    kind: spanner-sql
+    source: spanner-graph
+    parameters:
+    statement: >
+      GRAPH UserIdentity
+       MATCH (
+         o:SalesOrder{sus:1})-[h:HAS_EMAIL]->(e:Email)
+         RETURN  EXTRACT(MONTH FROM h.ts) AS Month, 
+          COUNT(o.id) AS TransactionCount ORDER BY Month DESC
+
+  report-all-connections:
+    description: Report on everything connected to a specific email and format this as text by node labels
+    kind: spanner-sql
+    source: spanner-graph
+    parameters:
+    - description: Email address
+      name: email
+      type: string
+    statement: >
+      GRAPH UserIdentity
+      MATCH p=(e:Email{email: @email })-[h]->{1,3}(j)
+      RETURN SAFE_TO_JSON(p) AS JSON
+
+  get-transaction-shape:
+    description: Given the last4 digits, zip code, email address and shipping address search for similarly shaped transaction
+    kind: spanner-sql
+    source: spanner-graph
+    readOnly: true
+    parameters:
+    - description: email
+      name: email
+      type: string
+    - description: last4
+      name: last4
+      type: string
+    - description: zip
+      name: zip
+      type: string
+    - description: address
+      name: address
+      type: string
+    statement: >
+      GRAPH UserIdentity
+      MATCH (
+        cc:CC{last4: @last4, zip: @zip})<-[EMAIL_HAS_CC]-(
+          e:Email{email:@email})<-[HAS_EMAIL]-(
+            o:SalesOrder)-[hs:HAS_ADDRESS]->(sa:ShippingAddress)
+        WHERE sa.id IN (
+          SELECT id FROM ShippingAddress WHERE
+          SEARCH_NGRAMS(address_Tokens, @address))
+      RETURN hs.ts AS TS, o.sus AS IS_SUSPECT, sa.address as Addr
+
+  report-all-nodes:
+    description: Given a node type in CC, Device, Email, Salesorder, IP return the Count by suspected status
+    kind: spanner-sql
+    source: spanner-graph
+    parameters:
+    - description: Label in CC, Device, Email, Salesorder, IP
+      name: label
+      type: string
+    statement: >
+      GRAPH UserIdentity
+       MATCH (w)
+       WHERE ARRAY_FIRST(LABELS(w)) = @label
+       RETURN w.sus AS IS_SUSPECT, COUNT(w.id) as COUNT
+       GROUP BY IS_SUSPECT
+
+toolsets:
+  query-email:
+    - query-email-sus
+    - query-email-cc
+    - query-email-orders
+  reports:
+    - report-suspicious-transactions
+    - report-all-connections
+    - report-all-nodes
+  shapes:
+    - get-transaction-shape
+  customerservice:
+    - lookup_account_by_email
+    - lookup_account_by_phonenumber
+    - lookup_orders_by_userid
+    - lookup_creditcard_by_userid
