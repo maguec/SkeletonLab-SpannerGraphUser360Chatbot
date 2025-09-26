@@ -44,14 +44,17 @@ uv run load_data.py
 cd Agent
 make gettoolbox
 make runtoolbox &
+```
 
 ### Run the Agent
 
 ```bash
 uv run adk web --host=0.0.0.0
 ```
-```
 
+
+## Try the following script on the Chatbot
+[Chatbot](./SampleScript.md)
 
 ## Feel free to run some sample queries in Spanner Studio
 
