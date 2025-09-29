@@ -1,5 +1,12 @@
 # Spanner Graph User360 Chatbot
 
+## Clone the Repo
+
+```bash
+git clone https://github.com/maguec/SkeletonLab-SpannerGraphUser360Chatbot.git
+cd SkeletonLab-SpannerGraphUser360Chatbot
+```
+
 ## Let's create our tables
 
 ### Make sure we can connect to the database
@@ -59,3 +66,7 @@ uv run adk web --host=0.0.0.0
 ## Feel free to run some sample queries in Spanner Studio
 
 [Queries](./SampleQueries.md)
+
+## Task
+
+Add a new feature to the chatbot
