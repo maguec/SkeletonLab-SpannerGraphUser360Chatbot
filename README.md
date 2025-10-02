@@ -1,5 +1,12 @@
 # Spanner Graph User360 Chatbot
 
+## Clone the Repo
+
+```bash
+git clone https://github.com/maguec/SkeletonLab-SpannerGraphUser360Chatbot.git
+cd SkeletonLab-SpannerGraphUser360Chatbot
+```
+
 ## Let's create our tables
 
 ### Make sure we can connect to the database
@@ -68,3 +75,18 @@ uv run adk web --host=0.0.0.0
 ## Feel free to run some sample queries in Spanner Studio
 
 [Queries](./SampleQueries.md)
+
+## Task
+
+Add a new feature to the chatbot
+
+Wrap the following sample hybrid query to the tools.yaml file, restart the bot and find the top 5 suspect emails and zip codes.
+
+```sql
+GRAPH UserIdentity MATCH (e:Email)-[:EMAIL_HAS_CC]->(c:CC) WHERE c.id IN (SELECT id from CC where sus=1) RETURN e.email as Email, c.zip as Zip;
+```
+
+hints:
+- restart the ADK web
+- no parameters are required
+- ask the LLM to parse the data to build the report
