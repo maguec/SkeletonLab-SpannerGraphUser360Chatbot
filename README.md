@@ -5,7 +5,16 @@
 ### Make sure we can connect to the database
 
 ```bash
+sudo chown `whoami` -R /tmp/google-cloud-sdk
+```
+
+```bash
 gcloud alpha spanner cli ${GOOGLE_SPANNER_DB}  --instance=${GOOGLE_SPANNER_INSTANCE}  --project=${GOOGLE_CLOUD_PROJECT}
+
+```
+Should look like this and run the select 1 command
+
+```bash
 Welcome to Spanner-Cli Client.
 
 Type 'help' or '\h' for help.
