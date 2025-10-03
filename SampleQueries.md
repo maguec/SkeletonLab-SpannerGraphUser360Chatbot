@@ -75,3 +75,15 @@ MATCH p=
 return o.id AS SALES_ID, ARRAY_FIRST(LABELS(h)) AS RELATION, 
   e.id AS TARGET_ID, ARRAY_FIRST(LABELS(e)) AS LABEL
 ```
+
+### Using Full Text Search - find all emails linked through devices that have alexis and org somewhere in the email
+
+```sql
+GRAPH UserIdentity
+MATCH (e:Email)-[h:HAS_DEVICE]->(d:Device)<-[h2:HAS_DEVICE]-(e2:Email)
+WHERE e.id IN (
+  SELECT id from Email WHERE
+  SEARCH_NGRAMS(email_Tokens, 'alexis AND org')
+  )
+RETURN e.email as Email, d.id as Device, e2.email as Email2
+```
